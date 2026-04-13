@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    #vis.vega-embed {
+      width: 100%;
+      display: flex;
+    }
+
+    #vis.vega-embed details,
+    #vis.vega-embed details summary {
+      position: relative;
+    }
+  </style>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega@6"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-lite@6.1.0"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-embed@7"></script>
+</head>
+<body>
+  <div id="vis"></div>
+  <script>
+    (function(vegaEmbed) {
+      var spec = {"config": {"view": {"continuousWidth": 300, "continuousHeight": 300}}, "data": {"name": "data-554343cb7e3f3f2ab61ed8e6bb9fdce3"}, "mark": {"type": "bar"}, "encoding": {"color": {"field": "rider_type", "title": "Rider Type", "type": "nominal"}, "tooltip": [{"field": "hour", "type": "quantitative"}, {"field": "rider_type", "type": "nominal"}, {"field": "ride_count", "type": "quantitative"}], "x": {"field": "hour", "title": "Hour of Day", "type": "ordinal"}, "y": {"field": "ride_count", "title": "Number of Rides", "type": "quantitative"}}, "height": 400, "title": "Number of Bluebikes Rides by Hour (Member vs Casual)", "width": 700, "$schema": "https://vega.github.io/schema/vega-lite/v6.1.0.json", "datasets": {"data-554343cb7e3f3f2ab61ed8e6bb9fdce3": [{"hour": 0, "rider_type": "Casual", "ride_count": 396}, {"hour": 0, "rider_type": "Member", "ride_count": 903}, {"hour": 1, "rider_type": "Casual", "ride_count": 254}, {"hour": 1, "rider_type": "Member", "ride_count": 548}, {"hour": 2, "rider_type": "Casual", "ride_count": 177}, {"hour": 2, "rider_type": "Member", "ride_count": 303}, {"hour": 3, "rider_type": "Casual", "ride_count": 55}, {"hour": 3, "rider_type": "Member", "ride_count": 133}, {"hour": 4, "rider_type": "Casual", "ride_count": 39}, {"hour": 4, "rider_type": "Member", "ride_count": 153}, {"hour": 5, "rider_type": "Casual", "ride_count": 56}, {"hour": 5, "rider_type": "Member", "ride_count": 890}, {"hour": 6, "rider_type": "Casual", "ride_count": 188}, {"hour": 6, "rider_type": "Member", "ride_count": 3951}, {"hour": 7, "rider_type": "Casual", "ride_count": 500}, {"hour": 7, "rider_type": "Member", "ride_count": 9761}, {"hour": 8, "rider_type": "Casual", "ride_count": 955}, {"hour": 8, "rider_type": "Member", "ride_count": 15221}, {"hour": 9, "rider_type": "Casual", "ride_count": 1292}, {"hour": 9, "rider_type": "Member", "ride_count": 7999}, {"hour": 10, "rider_type": "Casual", "ride_count": 2024}, {"hour": 10, "rider_type": "Member", "ride_count": 4619}, {"hour": 11, "rider_type": "Casual", "ride_count": 2565}, {"hour": 11, "rider_type": "Member", "ride_count": 4728}, {"hour": 12, "rider_type": "Casual", "ride_count": 2788}, {"hour": 12, "rider_type": "Member", "ride_count": 5942}, {"hour": 13, "rider_type": "Casual", "ride_count": 3022}, {"hour": 13, "rider_type": "Member", "ride_count": 5783}, {"hour": 14, "rider_type": "Casual", "ride_count": 3117}, {"hour": 14, "rider_type": "Member", "ride_count": 5405}, {"hour": 15, "rider_type": "Casual", "ride_count": 3258}, {"hour": 15, "rider_type": "Member", "ride_count": 6865}, {"hour": 16, "rider_type": "Casual", "ride_count": 3376}, {"hour": 16, "rider_type": "Member", "ride_count": 11302}, {"hour": 17, "rider_type": "Casual", "ride_count": 3473}, {"hour": 17, "rider_type": "Member", "ride_count": 16860}, {"hour": 18, "rider_type": "Casual", "ride_count": 2949}, {"hour": 18, "rider_type": "Member", "ride_count": 12229}, {"hour": 19, "rider_type": "Casual", "ride_count": 2434}, {"hour": 19, "rider_type": "Member", "ride_count": 8715}, {"hour": 20, "rider_type": "Casual", "ride_count": 1717}, {"hour": 20, "rider_type": "Member", "ride_count": 5726}, {"hour": 21, "rider_type": "Casual", "ride_count": 1315}, {"hour": 21, "rider_type": "Member", "ride_count": 3897}, {"hour": 22, "rider_type": "Casual", "ride_count": 1151}, {"hour": 22, "rider_type": "Member", "ride_count": 2829}, {"hour": 23, "rider_type": "Casual", "ride_count": 657}, {"hour": 23, "rider_type": "Member", "ride_count": 1678}]}};
+      var embedOpt = {"mode": "vega-lite"};
+
+      function showError(el, error){
+          el.innerHTML = ('<div style="color:red;">'
+                          + '<p>JavaScript Error: ' + error.message + '</p>'
+                          + "<p>This usually means there's a typo in your chart specification. "
+                          + "See the javascript console for the full traceback.</p>"
+                          + '</div>');
+          throw error;
+      }
+      const el = document.getElementById('vis');
+      vegaEmbed("#vis", spec, embedOpt)
+        .catch(error => showError(el, error));
+    })(vegaEmbed);
+
+  </script>
+</body>
+</html>
