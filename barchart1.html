@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    #vis.vega-embed {
+      width: 100%;
+      display: flex;
+    }
+
+    #vis.vega-embed details,
+    #vis.vega-embed details summary {
+      position: relative;
+    }
+  </style>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-lite@5.20.1"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="vis"></div>
+  <script>
+    (function(vegaEmbed) {
+      var spec = {"config": {"view": {"continuousWidth": 300, "continuousHeight": 300}}, "data": {"name": "data-a0bc85d4cbb36173c6e03e56d3b876be"}, "mark": {"type": "bar"}, "encoding": {"x": {"field": "total_trips", "title": "Total Trips (Start + End)", "type": "quantitative"}, "y": {"field": "station", "sort": "-x", "title": "Station", "type": "nominal"}}, "height": 200, "title": "Top 10 Most Active Stations", "width": 500, "$schema": "https://vega.github.io/schema/vega-lite/v5.20.1.json", "datasets": {"data-a0bc85d4cbb36173c6e03e56d3b876be": [{"station": "South Station - 700 Atlantic Ave.", "total_trips": 9218.0}, {"station": "MIT at Mass Ave / Amherst St", "total_trips": 8103.0}, {"station": "Harvard Square at Mass Ave/ Dunster", "total_trips": 5877.0}, {"station": "Central Square at Mass Ave / Essex St", "total_trips": 5681.0}, {"station": "Boston Public Library - 700 Boylston St.", "total_trips": 5645.0}, {"station": "MIT Stata Center at Vassar St / Main St", "total_trips": 5638.0}, {"station": "Beacon St / Mass Ave", "total_trips": 4984.0}, {"station": "Charles Circle - Charles St. at Cambridge St.", "total_trips": 4891.0}, {"station": "Kendall T", "total_trips": 4791.0}, {"station": "TD Garden - West End Park", "total_trips": 4744.0}]}};
+      var embedOpt = {"mode": "vega-lite"};
+
+      function showError(el, error){
+          el.innerHTML = ('<div style="color:red;">'
+                          + '<p>JavaScript Error: ' + error.message + '</p>'
+                          + "<p>This usually means there's a typo in your chart specification. "
+                          + "See the javascript console for the full traceback.</p>"
+                          + '</div>');
+          throw error;
+      }
+      const el = document.getElementById('vis');
+      vegaEmbed("#vis", spec, embedOpt)
+        .catch(error => showError(el, error));
+    })(vegaEmbed);
+
+  </script>
+</body>
+</html>
