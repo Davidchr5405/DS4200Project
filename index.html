@@ -94,57 +94,61 @@
     </a>
     </p>
 
-     <h3>Overview of Differences in Bluebikes Usage by Rider Type</h3>
+     <h3>Heatmap: Trips by Hour and Day of Week</h3>
 
     
     <div class = 'center'>
-               <iframe src="heatmap2.html" width="100%" height="610px"></iframe>
+               <iframe src="heatmap2.html" width="100%" height="500px"></iframe>
     </div>
             
     <p>
-        The figure shows a comparison between member and casual riders, where the x-axis
-        represents rider type and the y-axis represents the value being measured, such as
-        the number of rides or average trip duration. Color is used to distinguish between
-        the two rider groups, allowing for a clear comparison across categories.
+        This heatmap shows trip frequency across each hour of the day and 
+        day of the week, split by membership type, gender, and age group. 
+        Members show a clear pattern, with concentrated activity during the 8am 
+        and 5–6pm rush hours on weekdays. Non-members ride more evenly throughout 
+        the day, with heavier activity on weekend afternoons. The gender split 
+        mirrors this divide; male subscribers drive the weekday peaks while the Unknown 
+        category, which consists almost entirely of unregistered non-members, reflects 
+        the flatter leisure curve. Among age groups, Millennials and Gen X members account 
+        for the sharpest commuter spikes, while younger and older riders show more diffuse 
+        patterns across the week.
     </p>
 
-    <h3>Rider duration stuff goes here</h3>
+    <h3>CandleStick Chart: Trip Duration by Hour and Day</h3>
     
     <div class='center'>
     <iframe src="candle1.html" width="100%" height="550px"></iframe>
     </div>
 
     <p>
-        The figure shows the average trip duration by rider type, where the x-axis represents
-        rider category and the y-axis represents the average trip duration in minutes. Color
-        is used to distinguish between members and casual riders. The visualization suggests
-        that casual riders may take longer trips on average, while member riders tend to have
-        shorter trips, which may indicate differences in usage behavior between the two groups.
+        This CandleStick chart shows the distribution of trip durations 
+        across hours of the day and days of the week, with toggles for 
+        membership type and the option to cap the y-axis to filter outliers. 
+        Most Bluebikes trips fall between 7 and 19 minutes regardless of timing. 
+        Weekend afternoons and late-night hours produce wider interquartile ranges 
+        and higher means, consistent with recreational riding. Switching to the Non-Member 
+        view reveals higher medians and a wider spread across all hours and days.
     </p>
     
-
-        
-        <h3>The Top 10 Most Active Stations</h3>
+        <h3>Bar Chart: Most and Least Active Stations</h3>
         <div class='container' style="flex-direction: column;">
             <div class="image">
                 <iframe src="barchart2.html" width="100%" height="680px" frameborder="0"></iframe>
             </div>
             <div class='text'>
-                <p>Moreover, we present a horizontal bar chart ranking the top
-                10 most active Blue Bike stations by total trips (start + end).
-                This chart provides exact station names and trip counts. South Station is
-                the clear leader with 9,218 trips, well ahead of second‑place MIT at Mass Ave/Amherst St
-                (8,103 trips). The remaining stations decline gradually from Harvard Square (5,877)
-                down to TD Garden (4,744). Stations near transit hubs (South Station, Kendall T) and
-                dense academic/commercial areas (MIT, Harvard, Central Square, Boston Public Library)
-                dominate the list, highlighting the importance of high‑traffic locations. The
-                top two stations alone account for roughly 25% of all trips among the top 10,
-                showing a strong concentration of activity.
+                <p>The interactive bar chart ranks Bluebikes stations by total activity 
+                    (departures + arrivals). South Station leads with 9,218 trips, 
+                    well ahead of second-place MIT at Mass Ave/Amherst St with 8,103 trips. 
+                    The remaining stations decline gradually from Harvard Square at 5,877 
+                    trips down to TD Garden at 4,744. Stations near major transit hubs and 
+                    dense academic or commercial corridors dominate the top of the list, 
+                    reflecting the importance of high foot-traffic locations in driving bike 
+                    share usage. Toggling to Least Active reveals the quieter residential and peripheral stations.
                 </p>
             </div>
         </div>
     
-    <h3>Map...</h3>
+    <h3>Interactive Map: Station Activity Across Boston</h3>
         <p>We use Folium to make an
              interactive map of the greater Boston area covering stations across Boston, Cambridge, 
              and Somerville. The heat intensity indicates trip volume at each station. Users can toggle 
@@ -164,19 +168,33 @@
             <iframe src="bluebikes_heatmap.html" width="85%" height="550px" frameborder="0"></iframe>
         </div>
 
-    <h3>Flow stuff goes here</h3>
+    <h3>Chord Diagram: Station-to-Station Flow</h3>
     <div class='center'>
     <iframe src="chord.html" width="100%" height="760px"></iframe>
     </div>
     <p>
-        The figure shows the flow.
+        Next, we have a chord diagram mapping the volume of trips 
+        between the top stations, where ribbon width encodes the number 
+        of trips exchanged. The Cambridge and MIT cluster shows the densest internal 
+        flow, with MIT Mass Ave, MIT Stata Center, and Kendall T forming a tight triangle. 
+        South Station connects heavily outward toward Back Bay and the downtown financial 
+        district stations. Cross-river ribbons between Cambridge and Boston are thinner, 
+        suggesting most riders stay within their local area. 
     </p>
-    <h3>Scatter goes here</h3>
+    <h3>Scatter Plot: Riding Efficiency by Group</h3>
     <div class='center'>
     <iframe src="scatter.html" width="100%" height="750px"></iframe>
     </div>
     <p>
-        The figure shows the scatter.
+        Finally, this is a scatter plot of distance against trip duration with 
+        solid regression lines showing the average efficiency trend per group. 
+        Members cluster below the 10 km/h reference line. Non-members scatter above it, 
+        frequently taking 30 to 40 minutes for distances members cover in under 10, which 
+        is at least partly explained by Bluebikes pricing. Non-members are charged a flat 
+        rate covering the first 30 minutes, giving casual riders a financial incentive to 
+        maximize their ride time rather than return the bike quickly. Switching the color 
+        grouping to Neighborhood reveals that Cambridge and MIT trips hug the efficient lower band, 
+        benefiting from dedicated infrastructure, while Fenway and Kenmore rides show considerably more spread.
     </p>
 
         <h3>Summary and Future Work</h3>
