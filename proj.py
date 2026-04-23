@@ -5,8 +5,23 @@ import webbrowser
 import os
 
 
-CSV_PATH = "ds4200 proj/201608-hubway-tripdata.csv"  
+CSV_PATH = "lazy/DS4200Project/201608-hubway-tripdata.csv"  
 OUTPUT = "bluebikes_heatmap.html"
+
+# Distinct color gradients so each layer is visually distinguishable
+GRAD_ALL  = {"0.4": "yellow",     "0.65": "orange",     "1.0": "red"}
+GRAD_SUB  = {"0.4": "lightblue",  "0.65": "blue",       "1.0": "darkblue"}
+GRAD_CUST = {"0.4": "lightyellow","0.65": "orange",     "1.0": "darkorange"}
+
+
+def _normalize(pts):
+    """Scale weights to 0-1 so no single layer saturates the map."""
+    if not pts:
+        return pts
+    max_val = max(row[2] for row in pts)
+    if max_val == 0:
+        return pts
+    return [[lat, lng, cnt / max_val] for lat, lng, cnt in pts]
 
 
 def load(path):
@@ -76,42 +91,48 @@ def heatmap_by_hour(df):
 
 def build_map(df):
     m = folium.Map(
-    location=[42.3601, -71.0889],
-    zoom_start=13,
-    tiles="CartoDB positron",
-)
+        location=[42.3601, -71.0889],
+        zoom_start=13,
+        tiles="CartoDB positron",
+    )
 
     stats = station_stats(df)
 
-    # All riders heatmap
+    # All riders heatmap  (red/orange/yellow)
     all_pts = heatmap_points(df)
     HeatMap(
-        all_pts,
+        _normalize(all_pts),
         name="All Riders (Heatmap)",
-        radius=20,
-        blur=15,
+        gradient=GRAD_ALL,
+        radius=18,
+        blur=14,
         max_zoom=15,
+        min_opacity=0.3,
     ).add_to(m)
 
-    # Subscriber heatmap
+    # Subscriber heatmap  (blue)
     sub_pts = heatmap_points(df, "Subscriber")
     fg_sub = folium.FeatureGroup(name="Subscribers (Heatmap)", show=False)
     HeatMap(
-        sub_pts,
-        radius=20,
-        blur=15,
+        _normalize(sub_pts),
+        gradient=GRAD_SUB,
+        radius=18,
+        blur=14,
         max_zoom=15,
+        min_opacity=0.3,
     ).add_to(fg_sub)
     fg_sub.add_to(m)
 
-    # Customer heatmap
+    # Customer heatmap  (orange)
     cust_pts = heatmap_points(df, "Customer")
     fg_cust = folium.FeatureGroup(name="Customers (Heatmap)", show=False)
     HeatMap(
-        cust_pts,
-        radius=20,
-        blur=15,
+        _normalize(cust_pts),
+        gradient=GRAD_CUST,
+        radius=18,
+        blur=14,
         max_zoom=15,
+        min_opacity=0.3,
     ).add_to(fg_cust)
     fg_cust.add_to(m)
 

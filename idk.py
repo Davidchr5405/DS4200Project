@@ -1,28 +1,19 @@
 import pandas as pd
 import altair as alt
 
-# -----------------------------
-# 1. Load the 201608 Hubway file
-# -----------------------------
+
 df = pd.read_csv("helpme/DS4200Project/201608-hubway-tripdata.csv")
 
-# -----------------------------
-# 2. Clean column names
-# -----------------------------
+
 df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
 
 # Check columns (optional)
 print(df.columns)
 
-# -----------------------------
-# 3. Convert time + extract hour
-# -----------------------------
 df["starttime"] = pd.to_datetime(df["starttime"], errors="coerce")
 df["hour"] = df["starttime"].dt.hour
 
-# -----------------------------
-# 4. Clean user type
-# -----------------------------
+
 df["usertype"] = df["usertype"].str.strip().str.lower()
 
 def fix_user_type(x):
@@ -41,9 +32,6 @@ df = df.dropna(subset=["rider_type", "hour", "tripduration"])
 # Convert duration to minutes
 df["trip_minutes"] = df["tripduration"] / 60
 
-# -----------------------------
-# 5. Chart 1: Stacked bar (rides by hour)
-# -----------------------------
 rides_by_hour = (
     df.groupby(["hour", "rider_type"])
       .size()
@@ -61,9 +49,7 @@ chart1 = alt.Chart(rides_by_hour).mark_bar().encode(
     height=400
 )
 
-# -----------------------------
-# 6. Chart 2: Avg duration
-# -----------------------------
+
 avg_duration = (
     df.groupby("rider_type")["trip_minutes"]
       .mean()
@@ -81,9 +67,6 @@ chart2 = alt.Chart(avg_duration).mark_bar().encode(
     height=400
 )
 
-# -----------------------------
-# 7. Save charts
-# -----------------------------
 chart1.save("rides_by_hour_member_vs_casual.html")
 chart2.save("avg_duration_member_vs_casual.html")
 
