@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bluebikes Station Flow</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0c0e1a; color: #e2e8f0;
+  min-height: 100vh; padding: 24px 32px;
+}
+h2 { font-size:22px; font-weight:700; color:#f0f4ff; margin-bottom:4px; }
+.subtitle { font-size:13px; color:#64748b; margin-bottom:20px; }
+
+.controls {
+  display:flex; flex-wrap:wrap; gap:24px; align-items:flex-end;
+  background:#141627; border:1px solid #1e2235; border-radius:10px;
+  padding:14px 20px; margin-bottom:24px;
+}
+.control-group { display:flex; flex-direction:column; gap:6px; }
+.control-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; color:#64748b; }
+.btn-group { display:flex; gap:6px; }
+.btn {
+  padding:5px 13px; border:1px solid #1e2235; border-radius:6px;
+  background:#0c0e1a; color:#64748b; font-size:13px; cursor:pointer; transition:all .15s;
+}
+.btn:hover  { border-color:#4f8ef7; color:#c7d6ff; }
+.btn.active { background:#1a2744; border-color:#4f8ef7; color:#93c5fd; font-weight:600; }
+
+.slider-row { display:flex; align-items:center; gap:10px; }
+input[type=range] {
+  -webkit-appearance:none; width:180px; height:4px;
+  background:#1e2235; border-radius:2px; outline:none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:14px; height:14px;
+  border-radius:50%; background:#4f8ef7; cursor:pointer;
+}
+.slider-val { font-size:13px; font-weight:600; color:#93c5fd; min-width:36px; }
+
+.main { display:flex; gap:24px; align-items:flex-start; }
+#chart-area { flex-shrink:0; }
+.sidebar { flex:1; min-width:200px; }
+
+.legend-title { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.7px; color:#64748b; margin-bottom:10px; }
+.legend-item  { display:flex; align-items:center; gap:8px; margin-bottom:7px; font-size:13px; color:#94a3b8; cursor:pointer; transition:opacity .15s; }
+.legend-item:hover { color:#e2e8f0; }
+.legend-swatch { width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+
+.stats { margin-top:24px; }
+.stats-title { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.7px; color:#64748b; margin-bottom:10px; }
+.stat-card {
+  background:#141627; border:1px solid #1e2235; border-radius:8px;
+  padding:12px 14px; margin-bottom:8px; font-size:13px; display:none;
+}
+.stat-card.visible { display:block; }
+.stat-name  { font-weight:700; color:#93c5fd; margin-bottom:6px; font-size:14px; }
+.stat-row   { display:flex; justify-content:space-between; line-height:1.9; }
+.stat-key   { color:#64748b; }
+.stat-val   { font-weight:600; color:#e2e8f0; }
+.stat-hint  { font-size:11px; color:#334155; margin-top:6px; font-style:italic; }
+
+#tooltip {
+  position:fixed; pointer-events:none; z-index:999;
+  background:#141627; border:1px solid #4f8ef7; border-radius:8px;
+  padding:10px 14px; font-size:13px; line-height:1.8; color:#cbd5e1;
+  box-shadow:0 8px 32px rgba(0,0,0,.6); display:none; max-width:240px;
+}
+#tooltip .tt-title { font-weight:700; color:#93c5fd; margin-bottom:3px; }
+</style>
+</head>
+<body>
+
+<h2>Bluebikes Station-to-Station Flow</h2>
+<p class="subtitle">Ribbons show trips between station pairs — width encodes volume — colored by the source station's neighborhood</p>
+
+<div class="controls">
+  <div class="control-group">
+    <span class="control-label">Top N Stations</span>
+    <div class="slider-row">
+      <input type="range" id="n-slider" min="10" max="20" step="1" value="15">
+      <span class="slider-val" id="n-val">15</span>
+    </div>
+  </div>
+  <div class="control-group">
+    <span class="control-label">Color by</span>
+    <div class="btn-group" id="color-btns">
+      <button class="btn active" data-val="group">Neighborhood</button>
+      <button class="btn"        data-val="volume">Trip Volume</button>
+    </div>
+  </div>
+  <div class="control-group">
+    <span class="control-label">Self-loops</span>
+    <div class="btn-group" id="loop-btns">
+      <button class="btn"        data-val="true">Show</button>
+      <button class="btn active" data-val="false">Hide</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div id="chart-area"></div>
+  <div class="sidebar">
+    <div class="legend-title">Neighborhoods</div>
+    <div id="legend"></div>
+    <div class="stats">
+      <div class="stats-title">Station Detail</div>
+      <div class="stat-card" id="stat-card">
+        <div class="stat-name"  id="sc-name"></div>
+        <div class="stat-row"><span class="stat-key">Total trips</span>     <span class="stat-val" id="sc-total"></span></div>
+        <div class="stat-row"><span class="stat-key">Trips out</span>        <span class="stat-val" id="sc-out"></span></div>
+        <div class="stat-row"><span class="stat-key">Trips in</span>         <span class="stat-val" id="sc-in"></span></div>
+        <div class="stat-row"><span class="stat-key">Top destination</span>  <span class="stat-val" id="sc-dest"></span></div>
+        <div class="stat-row"><span class="stat-key">Top origin</span>       <span class="stat-val" id="sc-orig"></span></div>
+        <div class="stat-hint">Click arc again or background to deselect</div>
+      </div>
+      <div id="stat-hint-default" style="font-size:12px;color:#334155;font-style:italic;">
+        Hover a ribbon to see flow details.<br>Click an arc to pin station stats.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+const RAW = {"matrices": {"10": [[81, 17, 7, 10, 88, 11, 15, 15, 18, 150], [36, 157, 214, 190, 74, 102, 273, 47, 148, 9], [16, 184, 98, 79, 39, 52, 49, 36, 25, 12], [2, 154, 131, 47, 29, 93, 63, 24, 81, 3], [80, 68, 20, 39, 115, 27, 40, 46, 17, 33], [8, 97, 61, 123, 19, 47, 47, 49, 80, 39], [17, 322, 49, 53, 42, 61, 107, 56, 37, 12], [24, 50, 21, 32, 85, 37, 57, 102, 76, 31], [22, 149, 49, 76, 13, 104, 40, 83, 35, 40], [130, 16, 8, 3, 27, 21, 17, 38, 10, 38]], "11": [[81, 17, 7, 10, 88, 11, 15, 15, 18, 150, 93], [36, 157, 214, 190, 74, 102, 273, 47, 148, 9, 30], [16, 184, 98, 79, 39, 52, 49, 36, 25, 12, 8], [2, 154, 131, 47, 29, 93, 63, 24, 81, 3, 4], [80, 68, 20, 39, 115, 27, 40, 46, 17, 33, 73], [8, 97, 61, 123, 19, 47, 47, 49, 80, 39, 12], [17, 322, 49, 53, 42, 61, 107, 56, 37, 12, 50], [24, 50, 21, 32, 85, 37, 57, 102, 76, 31, 69], [22, 149, 49, 76, 13, 104, 40, 83, 35, 40, 12], [130, 16, 8, 3, 27, 21, 17, 38, 10, 38, 36], [140, 23, 16, 17, 55, 3, 49, 53, 10, 65, 91]], "12": [[81, 17, 7, 10, 88, 11, 15, 15, 18, 150, 93, 59], [36, 157, 214, 190, 74, 102, 273, 47, 148, 9, 30, 70], [16, 184, 98, 79, 39, 52, 49, 36, 25, 12, 8, 32], [2, 154, 131, 47, 29, 93, 63, 24, 81, 3, 4, 9], [80, 68, 20, 39, 115, 27, 40, 46, 17, 33, 73, 54], [8, 97, 61, 123, 19, 47, 47, 49, 80, 39, 12, 12], [17, 322, 49, 53, 42, 61, 107, 56, 37, 12, 50, 117], [24, 50, 21, 32, 85, 37, 57, 102, 76, 31, 69, 39], [22, 149, 49, 76, 13, 104, 40, 83, 35, 40, 12, 7], [130, 16, 8, 3, 27, 21, 17, 38, 10, 38, 36, 25], [140, 23, 16, 17, 55, 3, 49, 53, 10, 65, 91, 49], [67, 111, 25, 23, 33, 21, 102, 71, 15, 24, 50, 269]], "13": [[81, 17, 7, 10, 88, 11, 15, 15, 18, 150, 93, 59, 105], [36, 157, 214, 190, 74, 102, 273, 47, 148, 9, 30, 70, 15], [16, 184, 98, 79, 39, 52, 49, 36, 25, 12, 8, 32, 11], [2, 154, 131, 47, 29, 93, 63, 24, 81, 3, 4, 9, 12], [80, 68, 20, 39, 115, 27, 40, 46, 17, 33, 73, 54, 67], [8, 97, 61, 123, 19, 47, 47, 49, 80, 39, 12, 12, 11], [17, 322, 49, 53, 42, 61, 107, 56, 37, 12, 50, 117, 16], [24, 50, 21, 32, 85, 37, 57, 102, 76, 31, 69, 39, 35], [22, 149, 49, 76, 13, 104, 40, 83, 35, 40, 12, 7, 14], [130, 16, 8, 3, 27, 21, 17, 38, 10, 38, 36, 25, 37], [140, 23, 16, 17, 55, 3, 49, 53, 10, 65, 91, 49, 75], [67, 111, 25, 23, 33, 21, 102, 71, 15, 24, 50, 269, 23], [139, 6, 3, 20, 28, 10, 35, 39, 10, 80, 59, 29, 120]], "14": [[81, 17, 7, 10, 88, 11, 15, 15, 18, 150, 93, 59, 105, 133], [36, 157, 214, 190, 74, 102, 273, 47, 148, 9, 30, 70, 15, 15], [16, 184, 98, 79, 39, 52, 49, 36, 25, 12, 8, 32, 11, 3], [2, 154, 131, 47, 29, 93, 63, 24, 81, 3, 4, 9, 12, 3], [80, 68, 20, 39, 115, 27, 40, 46, 17, 33, 73, 54, 67, 62], [8, 97, 61, 123, 19, 47, 47, 49, 80, 39, 12, 12, 11, 6], [17, 322, 49, 53, 42, 61, 107, 56, 37, 12, 50, 117, 16, 6], [24, 50, 21, 32, 85, 37, 57, 102, 76, 31, 69, 39, 35, 37], [22, 149, 49, 76, 13, 104, 40, 83, 35, 40, 12, 7, 14, 16], [130, 16, 8, 3, 27, 21, 17, 38, 10, 38, 36, 25, 37, 21], [140, 23, 16, 17, 55, 3, 49, 53, 10, 65, 91, 49, 75, 45], [67, 111, 25, 23, 33, 21, 102, 71, 15, 24, 50, 269, 23, 26], [139, 6, 3, 20, 28, 10, 35, 39, 10, 80, 59, 29, 120, 45], [118, 10, 15, 9, 44, 3, 25, 63, 14, 33, 54, 22, 37, 89]], "15": [[81, 17, 7, 10, 88, 11, 15, 15, 18, 150, 93, 59, 105, 133, 23], [36, 157, 214, 190, 74, 102, 273, 47, 148, 9, 30, 70, 15, 15, 102], [16, 184, 98, 79, 39, 52, 49, 36, 25, 12, 8, 32, 11, 3, 26], [2, 154, 131, 47, 29, 93, 63, 24, 81, 3, 4, 9, 12, 3, 30], [80, 68, 20, 39, 115, 27, 40, 46, 17, 33, 73, 54, 67, 62, 53], [8, 97, 61, 123, 19, 47, 47, 49, 80, 39, 12, 12, 11, 6, 42], [17, 322, 49, 53, 42, 61, 107, 56, 37, 12, 50, 117, 16, 6, 40], [24, 50, 21, 32, 85, 37, 57, 102, 76, 31, 69, 39, 35, 37, 46], [22, 149, 49, 76, 13, 104, 40, 83, 35, 40, 12, 7, 14, 16, 37], [130, 16, 8, 3, 27, 21, 17, 38, 10, 38, 36, 25, 37, 21, 10], [140, 23, 16, 17, 55, 3, 49, 53, 10, 65, 91, 49, 75, 45, 41], [67, 111, 25, 23, 33, 21, 102, 71, 15, 24, 50, 269, 23, 26, 48], [139, 6, 3, 20, 28, 10, 35, 39, 10, 80, 59, 29, 120, 45, 21], [118, 10, 15, 9, 44, 3, 25, 63, 14, 33, 54, 22, 37, 89, 18], [21, 96, 23, 21, 54, 83, 36, 42, 38, 20, 79, 58, 11, 12, 61]], "16": [[81, 17, 7, 10, 88, 11, 15, 15, 18, 150, 93, 59, 105, 133, 23, 83], [36, 157, 214, 190, 74, 102, 273, 47, 148, 9, 30, 70, 15, 15, 102, 44], [16, 184, 98, 79, 39, 52, 49, 36, 25, 12, 8, 32, 11, 3, 26, 4], [2, 154, 131, 47, 29, 93, 63, 24, 81, 3, 4, 9, 12, 3, 30, 8], [80, 68, 20, 39, 115, 27, 40, 46, 17, 33, 73, 54, 67, 62, 53, 23], [8, 97, 61, 123, 19, 47, 47, 49, 80, 39, 12, 12, 11, 6, 42, 21], [17, 322, 49, 53, 42, 61, 107, 56, 37, 12, 50, 117, 16, 6, 40, 25], [24, 50, 21, 32, 85, 37, 57, 102, 76, 31, 69, 39, 35, 37, 46, 32], [22, 149, 49, 76, 13, 104, 40, 83, 35, 40, 12, 7, 14, 16, 37, 5], [130, 16, 8, 3, 27, 21, 17, 38, 10, 38, 36, 25, 37, 21, 10, 15], [140, 23, 16, 17, 55, 3, 49, 53, 10, 65, 91, 49, 75, 45, 41, 21], [67, 111, 25, 23, 33, 21, 102, 71, 15, 24, 50, 269, 23, 26, 48, 25], [139, 6, 3, 20, 28, 10, 35, 39, 10, 80, 59, 29, 120, 45, 21, 20], [118, 10, 15, 9, 44, 3, 25, 63, 14, 33, 54, 22, 37, 89, 18, 21], [21, 96, 23, 21, 54, 83, 36, 42, 38, 20, 79, 58, 11, 12, 61, 9], [86, 49, 7, 20, 22, 80, 17, 29, 15, 19, 23, 29, 41, 17, 7, 59]], "17": [[81, 17, 7, 10, 88, 11, 15, 15, 18, 150, 93, 59, 105, 133, 23, 83, 55], [36, 157, 214, 190, 74, 102, 273, 47, 148, 9, 30, 70, 15, 15, 102, 44, 59], [16, 184, 98, 79, 39, 52, 49, 36, 25, 12, 8, 32, 11, 3, 26, 4, 36], [2, 154, 131, 47, 29, 93, 63, 24, 81, 3, 4, 9, 12, 3, 30, 8, 19], [80, 68, 20, 39, 115, 27, 40, 46, 17, 33, 73, 54, 67, 62, 53, 23, 24], [8, 97, 61, 123, 19, 47, 47, 49, 80, 39, 12, 12, 11, 6, 42, 21, 12], [17, 322, 49, 53, 42, 61, 107, 56, 37, 12, 50, 117, 16, 6, 40, 25, 42], [24, 50, 21, 32, 85, 37, 57, 102, 76, 31, 69, 39, 35, 37, 46, 32, 56], [22, 149, 49, 76, 13, 104, 40, 83, 35, 40, 12, 7, 14, 16, 37, 5, 13], [130, 16, 8, 3, 27, 21, 17, 38, 10, 38, 36, 25, 37, 21, 10, 15, 38], [140, 23, 16, 17, 55, 3, 49, 53, 10, 65, 91, 49, 75, 45, 41, 21, 76], [67, 111, 25, 23, 33, 21, 102, 71, 15, 24, 50, 269, 23, 26, 48, 25, 25], [139, 6, 3, 20, 28, 10, 35, 39, 10, 80, 59, 29, 120, 45, 21, 20, 31], [118, 10, 15, 9, 44, 3, 25, 63, 14, 33, 54, 22, 37, 89, 18, 21, 28], [21, 96, 23, 21, 54, 83, 36, 42, 38, 20, 79, 58, 11, 12, 61, 9, 36], [86, 49, 7, 20, 22, 80, 17, 29, 15, 19, 23, 29, 41, 17, 7, 59, 24], [111, 45, 23, 26, 76, 20, 28, 53, 10, 55, 70, 31, 27, 33, 26, 26, 34]], "18": [[81, 17, 7, 10, 88, 11, 15, 15, 18, 150, 93, 59, 105, 133, 23, 83, 55, 7], [36, 157, 214, 190, 74, 102, 273, 47, 148, 9, 30, 70, 15, 15, 102, 44, 59, 76], [16, 184, 98, 79, 39, 52, 49, 36, 25, 12, 8, 32, 11, 3, 26, 4, 36, 40], [2, 154, 131, 47, 29, 93, 63, 24, 81, 3, 4, 9, 12, 3, 30, 8, 19, 49], [80, 68, 20, 39, 115, 27, 40, 46, 17, 33, 73, 54, 67, 62, 53, 23, 24, 6], [8, 97, 61, 123, 19, 47, 47, 49, 80, 39, 12, 12, 11, 6, 42, 21, 12, 42], [17, 322, 49, 53, 42, 61, 107, 56, 37, 12, 50, 117, 16, 6, 40, 25, 42, 18], [24, 50, 21, 32, 85, 37, 57, 102, 76, 31, 69, 39, 35, 37, 46, 32, 56, 32], [22, 149, 49, 76, 13, 104, 40, 83, 35, 40, 12, 7, 14, 16, 37, 5, 13, 78], [130, 16, 8, 3, 27, 21, 17, 38, 10, 38, 36, 25, 37, 21, 10, 15, 38, 17], [140, 23, 16, 17, 55, 3, 49, 53, 10, 65, 91, 49, 75, 45, 41, 21, 76, 6], [67, 111, 25, 23, 33, 21, 102, 71, 15, 24, 50, 269, 23, 26, 48, 25, 25, 5], [139, 6, 3, 20, 28, 10, 35, 39, 10, 80, 59, 29, 120, 45, 21, 20, 31, 17], [118, 10, 15, 9, 44, 3, 25, 63, 14, 33, 54, 22, 37, 89, 18, 21, 28, 12], [21, 96, 23, 21, 54, 83, 36, 42, 38, 20, 79, 58, 11, 12, 61, 9, 36, 67], [86, 49, 7, 20, 22, 80, 17, 29, 15, 19, 23, 29, 41, 17, 7, 59, 24, 12], [111, 45, 23, 26, 76, 20, 28, 53, 10, 55, 70, 31, 27, 33, 26, 26, 34, 21], [13, 69, 42, 54, 7, 85, 24, 38, 104, 36, 1, 11, 24, 18, 44, 18, 21, 41]], "19": [[81, 17, 7, 10, 88, 11, 15, 15, 18, 150, 93, 59, 105, 133, 23, 83, 55, 7, 27], [36, 157, 214, 190, 74, 102, 273, 47, 148, 9, 30, 70, 15, 15, 102, 44, 59, 76, 51], [16, 184, 98, 79, 39, 52, 49, 36, 25, 12, 8, 32, 11, 3, 26, 4, 36, 40, 24], [2, 154, 131, 47, 29, 93, 63, 24, 81, 3, 4, 9, 12, 3, 30, 8, 19, 49, 29], [80, 68, 20, 39, 115, 27, 40, 46, 17, 33, 73, 54, 67, 62, 53, 23, 24, 6, 59], [8, 97, 61, 123, 19, 47, 47, 49, 80, 39, 12, 12, 11, 6, 42, 21, 12, 42, 34], [17, 322, 49, 53, 42, 61, 107, 56, 37, 12, 50, 117, 16, 6, 40, 25, 42, 18, 67], [24, 50, 21, 32, 85, 37, 57, 102, 76, 31, 69, 39, 35, 37, 46, 32, 56, 32, 15], [22, 149, 49, 76, 13, 104, 40, 83, 35, 40, 12, 7, 14, 16, 37, 5, 13, 78, 11], [130, 16, 8, 3, 27, 21, 17, 38, 10, 38, 36, 25, 37, 21, 10, 15, 38, 17, 4], [140, 23, 16, 17, 55, 3, 49, 53, 10, 65, 91, 49, 75, 45, 41, 21, 76, 6, 34], [67, 111, 25, 23, 33, 21, 102, 71, 15, 24, 50, 269, 23, 26, 48, 25, 25, 5, 15], [139, 6, 3, 20, 28, 10, 35, 39, 10, 80, 59, 29, 120, 45, 21, 20, 31, 17, 23], [118, 10, 15, 9, 44, 3, 25, 63, 14, 33, 54, 22, 37, 89, 18, 21, 28, 12, 2], [21, 96, 23, 21, 54, 83, 36, 42, 38, 20, 79, 58, 11, 12, 61, 9, 36, 67, 39], [86, 49, 7, 20, 22, 80, 17, 29, 15, 19, 23, 29, 41, 17, 7, 59, 24, 12, 34], [111, 45, 23, 26, 76, 20, 28, 53, 10, 55, 70, 31, 27, 33, 26, 26, 34, 21, 19], [13, 69, 42, 54, 7, 85, 24, 38, 104, 36, 1, 11, 24, 18, 44, 18, 21, 41, 22], [11, 62, 27, 38, 65, 28, 46, 45, 11, 8, 30, 32, 30, 2, 33, 31, 30, 18, 69]], "20": [[81, 17, 7, 10, 88, 11, 15, 15, 18, 150, 93, 59, 105, 133, 23, 83, 55, 7, 27, 38], [36, 157, 214, 190, 74, 102, 273, 47, 148, 9, 30, 70, 15, 15, 102, 44, 59, 76, 51, 50], [16, 184, 98, 79, 39, 52, 49, 36, 25, 12, 8, 32, 11, 3, 26, 4, 36, 40, 24, 19], [2, 154, 131, 47, 29, 93, 63, 24, 81, 3, 4, 9, 12, 3, 30, 8, 19, 49, 29, 12], [80, 68, 20, 39, 115, 27, 40, 46, 17, 33, 73, 54, 67, 62, 53, 23, 24, 6, 59, 27], [8, 97, 61, 123, 19, 47, 47, 49, 80, 39, 12, 12, 11, 6, 42, 21, 12, 42, 34, 24], [17, 322, 49, 53, 42, 61, 107, 56, 37, 12, 50, 117, 16, 6, 40, 25, 42, 18, 67, 19], [24, 50, 21, 32, 85, 37, 57, 102, 76, 31, 69, 39, 35, 37, 46, 32, 56, 32, 15, 24], [22, 149, 49, 76, 13, 104, 40, 83, 35, 40, 12, 7, 14, 16, 37, 5, 13, 78, 11, 46], [130, 16, 8, 3, 27, 21, 17, 38, 10, 38, 36, 25, 37, 21, 10, 15, 38, 17, 4, 31], [140, 23, 16, 17, 55, 3, 49, 53, 10, 65, 91, 49, 75, 45, 41, 21, 76, 6, 34, 48], [67, 111, 25, 23, 33, 21, 102, 71, 15, 24, 50, 269, 23, 26, 48, 25, 25, 5, 15, 20], [139, 6, 3, 20, 28, 10, 35, 39, 10, 80, 59, 29, 120, 45, 21, 20, 31, 17, 23, 77], [118, 10, 15, 9, 44, 3, 25, 63, 14, 33, 54, 22, 37, 89, 18, 21, 28, 12, 2, 52], [21, 96, 23, 21, 54, 83, 36, 42, 38, 20, 79, 58, 11, 12, 61, 9, 36, 67, 39, 19], [86, 49, 7, 20, 22, 80, 17, 29, 15, 19, 23, 29, 41, 17, 7, 59, 24, 12, 34, 27], [111, 45, 23, 26, 76, 20, 28, 53, 10, 55, 70, 31, 27, 33, 26, 26, 34, 21, 19, 30], [13, 69, 42, 54, 7, 85, 24, 38, 104, 36, 1, 11, 24, 18, 44, 18, 21, 41, 22, 26], [11, 62, 27, 38, 65, 28, 46, 45, 11, 8, 30, 32, 30, 2, 33, 31, 30, 18, 69, 6], [43, 51, 16, 18, 15, 56, 19, 64, 34, 36, 40, 49, 34, 53, 19, 14, 24, 26, 6, 64]]}, "stations": [{"full": "South Station - 700 Atlantic Ave.", "short": "South Station", "group": "Downtown Boston", "color": "#f59e0b", "total": 9218}, {"full": "MIT at Mass Ave / Amherst St", "short": "MIT Mass Ave", "group": "Cambridge/MIT", "color": "#4f8ef7", "total": 8103}, {"full": "Harvard Square at Mass Ave/ Dunster", "short": "Harvard Sq", "group": "Cambridge/MIT", "color": "#4f8ef7", "total": 5877}, {"full": "Central Square at Mass Ave / Essex St", "short": "Central Sq", "group": "Cambridge/MIT", "color": "#4f8ef7", "total": 5681}, {"full": "Boston Public Library - 700 Boylston St.", "short": "BPL Boylston", "group": "Back Bay", "color": "#10b981", "total": 5645}, {"full": "MIT Stata Center at Vassar St / Main St", "short": "MIT Stata", "group": "Cambridge/MIT", "color": "#4f8ef7", "total": 5638}, {"full": "Beacon St / Mass Ave", "short": "Beacon/Mass Ave", "group": "Cambridge/MIT", "color": "#4f8ef7", "total": 4984}, {"full": "Charles Circle - Charles St. at Cambridge St.", "short": "Charles Circle", "group": "Charles River", "color": "#a78bfa", "total": 4891}, {"full": "Kendall T", "short": "Kendall T", "group": "Kendall", "color": "#fb7185", "total": 4791}, {"full": "TD Garden - West End Park", "short": "TD Garden", "group": "Downtown Boston", "color": "#f59e0b", "total": 4744}, {"full": "Boylston St. at Arlington St.", "short": "Boylston/Arlington", "group": "Back Bay", "color": "#10b981", "total": 4715}, {"full": "The Esplanade - Beacon St. at Arlington St.", "short": "Esplanade", "group": "Back Bay", "color": "#10b981", "total": 4591}, {"full": "Mayor Martin J Walsh - 28 State St", "short": "28 State St", "group": "Downtown Boston", "color": "#f59e0b", "total": 4564}, {"full": "Cross St. at Hanover St.", "short": "Cross/Hanover St", "group": "Downtown Boston", "color": "#f59e0b", "total": 4456}, {"full": "Kenmore Sq / Comm Ave", "short": "Kenmore Sq", "group": "Back Bay", "color": "#10b981", "total": 4198}, {"full": "Back Bay / South End Station", "short": "Back Bay Station", "group": "Back Bay", "color": "#10b981", "total": 4147}, {"full": "Boylston at Fairfield", "short": "Boylston/Fairfield", "group": "Back Bay", "color": "#10b981", "total": 4114}, {"full": "One Kendall Square at Hampshire St / Portland St", "short": "One Kendall Sq", "group": "Cambridge/MIT", "color": "#4f8ef7", "total": 3999}, {"full": "Christian Science Plaza", "short": "Christian Science", "group": "Back Bay", "color": "#10b981", "total": 3950}, {"full": "Cambridge St. at Joy St.", "short": "Cambridge/Joy St", "group": "Cambridge/MIT", "color": "#4f8ef7", "total": 3939}], "groupColors": {"Cambridge/MIT": "#4f8ef7", "Downtown Boston": "#f59e0b", "Back Bay": "#10b981", "Charles River": "#a78bfa", "Kendall": "#fb7185", "Other": "#94a3b8"}};
+
+const W = 580, H = 580, R = 220, rInner = R - 22;
+const state = { n:15, colorBy:'group', showLoops:false, pinned:null };
+const volScale = d3.scaleSequential(d3.interpolatePlasma).domain([0, 1]);
+
+function getColor(i, matrix, mode) {
+  if (mode === 'group') return RAW.stations[i].color;
+  const rowSum = d3.sum(matrix[i]);
+  const total  = d3.sum(matrix.flat());
+  return volScale(rowSum / total * state.n);
+}
+
+// Legend
+const legendEl = document.getElementById('legend');
+let currentHighlightGroup = null;
+Object.entries(RAW.groupColors).forEach(([grp, col]) => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.innerHTML = `<div class="legend-swatch" style="background:${col}"></div>${grp}`;
+  item.addEventListener('click', () => {
+    if (currentHighlightGroup === grp) { currentHighlightGroup = null; }
+    else { currentHighlightGroup = grp; state.pinned = null; }
+    applyOpacity();
+  });
+  legendEl.appendChild(item);
+});
+
+function applyOpacity() {
+  d3.selectAll('.arc-path').attr('opacity', (d, i) => {
+    if (state.pinned !== null) return i === state.pinned ? 1 : 0.12;
+    if (currentHighlightGroup) return RAW.stations[i].group === currentHighlightGroup ? 1 : 0.2;
+    return 0.9;
+  });
+  d3.selectAll('.ribbon').attr('opacity', d => {
+    const si = d.source.index, ti = d.target.index;
+    if (state.pinned !== null) return (si === state.pinned || ti === state.pinned) ? 0.75 : 0.04;
+    if (currentHighlightGroup) {
+      return (RAW.stations[si].group === currentHighlightGroup ||
+              RAW.stations[ti].group === currentHighlightGroup) ? 0.7 : 0.04;
+    }
+    return 0.65;
+  });
+}
+
+function showStatCard(i, matrix, stations) {
+  const st       = stations[i];
+  const outV     = matrix[i];
+  const inV      = matrix.map(r => r[i]);
+  const outTotal = d3.sum(outV);
+  const inTotal  = d3.sum(inV);
+  const topDestIdx = outV.indexOf(Math.max(...outV.map((v, j) => j === i ? -1 : v)));
+  const topOrigIdx = inV.indexOf( Math.max(...inV.map((v, j)  => j === i ? -1 : v)));
+
+  document.getElementById('sc-name').textContent  = st.short;
+  document.getElementById('sc-total').textContent = st.total.toLocaleString() + ' trips';
+  document.getElementById('sc-out').textContent   = outTotal.toLocaleString();
+  document.getElementById('sc-in').textContent    = inTotal.toLocaleString();
+  document.getElementById('sc-dest').textContent  = stations[topDestIdx]?.short + ` (${outV[topDestIdx].toLocaleString()})`;
+  document.getElementById('sc-orig').textContent  = stations[topOrigIdx]?.short + ` (${inV[topOrigIdx].toLocaleString()})`;
+  document.getElementById('stat-card').classList.add('visible');
+  document.getElementById('stat-hint-default').style.display = 'none';
+}
+
+const tt = document.getElementById('tooltip');
+function showTooltip(e, html) {
+  tt.innerHTML = html;
+  tt.style.display = 'block';
+  tt.style.left = Math.min(e.clientX + 14, window.innerWidth - 260) + 'px';
+  tt.style.top  = (e.clientY + 14) + 'px';
+}
+function hideTooltip() { tt.style.display = 'none'; }
+
+function render() {
+  d3.select('#chart-area').selectAll('*').remove();
+  document.getElementById('stat-card').classList.remove('visible');
+  document.getElementById('stat-hint-default').style.display = 'block';
+
+  const n        = state.n;
+  const stations = RAW.stations.slice(0, n);
+  let matrix     = RAW.matrices[n].map(row => row.slice(0, n));
+  if (!state.showLoops) matrix = matrix.map((row, i) => row.map((v, j) => i === j ? 0 : v));
+
+  const chord  = d3.chord().padAngle(0.03).sortSubgroups(d3.descending)(matrix);
+  const arc    = d3.arc().innerRadius(rInner).outerRadius(R);
+  const ribbon = d3.ribbon().radius(rInner - 2);
+
+  const svg = d3.select('#chart-area').append('svg').attr('width', W).attr('height', H);
+  svg.on('click', e => {
+    if (e.target.tagName === 'svg') {
+      state.pinned = null; currentHighlightGroup = null;
+      document.getElementById('stat-card').classList.remove('visible');
+      document.getElementById('stat-hint-default').style.display = 'block';
+      applyOpacity();
+    }
+  });
+
+  const g = svg.append('g').attr('transform', `translate(${W/2},${H/2})`);
+
+  // Ribbons
+  g.append('g').selectAll('path')
+    .data(chord).join('path')
+    .attr('class', 'ribbon')
+    .attr('d', ribbon)
+    .attr('fill',    d => getColor(d.source.index, matrix, state.colorBy))
+    .attr('opacity', 0.65)
+    .on('mousemove', (e, d) => {
+      const si = d.source.index, ti = d.target.index;
+      const fwd = matrix[si][ti], bwd = matrix[ti][si];
+      showTooltip(e,
+        `<div class="tt-title">${stations[si].short} ↔ ${stations[ti].short}</div>` +
+        `${stations[si].short} → ${stations[ti].short}: <b>${fwd.toLocaleString()}</b> trips<br>` +
+        `${stations[ti].short} → ${stations[si].short}: <b>${bwd.toLocaleString()}</b> trips<br>` +
+        `Net flow: <b>${Math.abs(fwd-bwd).toLocaleString()}</b> ` +
+        `${fwd > bwd ? '→ ' + stations[ti].short : '→ ' + stations[si].short}`
+      );
+      if (state.pinned === null) {
+        d3.selectAll('.ribbon').attr('opacity', rd =>
+          (rd.source.index===si||rd.target.index===si||
+           rd.source.index===ti||rd.target.index===ti) ? 0.8 : 0.05);
+      }
+    })
+    .on('mouseleave', () => { hideTooltip(); if (state.pinned===null) applyOpacity(); });
+
+  // Arcs
+  const arcG = g.append('g').selectAll('g').data(chord.groups).join('g').attr('class','arc');
+
+  arcG.append('path')
+    .attr('class', 'arc-path')
+    .attr('d', arc)
+    .attr('fill',         (d, i) => getColor(i, matrix, state.colorBy))
+    .attr('stroke',       '#0c0e1a')
+    .attr('stroke-width', 1.5)
+    .attr('opacity',      0.9)
+    .style('cursor', 'pointer')
+    .on('mousemove', (e, d) => {
+      const i = d.index, st = stations[i];
+      showTooltip(e,
+        `<div class="tt-title">${st.short}</div>` +
+        `${st.group}<br>` +
+        `Trips out (shown): <b>${d3.sum(matrix[i]).toLocaleString()}</b><br>` +
+        `Trips in (shown):  <b>${d3.sum(matrix.map(r => r[i])).toLocaleString()}</b><br>` +
+        `All-station total: <b>${st.total.toLocaleString()}</b>`
+      );
+    })
+    .on('mouseleave', () => { hideTooltip(); if (state.pinned===null) applyOpacity(); })
+    .on('click', (e, d) => {
+      e.stopPropagation();
+      const i = d.index;
+      if (state.pinned === i) {
+        state.pinned = null; currentHighlightGroup = null;
+        document.getElementById('stat-card').classList.remove('visible');
+        document.getElementById('stat-hint-default').style.display = 'block';
+        applyOpacity(); return;
+      }
+      state.pinned = i;
+      currentHighlightGroup = null;
+      applyOpacity();
+      showStatCard(i, matrix, stations);
+    });
+
+  // Labels
+  arcG.append('text')
+    .each(d => { d.angle = (d.startAngle + d.endAngle) / 2; })
+    .attr('dy', '0.35em')
+    .attr('transform', d =>
+      `rotate(${d.angle * 180/Math.PI - 90}) translate(${R + 10}) ${d.angle > Math.PI ? 'rotate(180)' : ''}`)
+    .attr('text-anchor', d => d.angle > Math.PI ? 'end' : 'start')
+    .attr('font-size',   n > 15 ? 10 : 11)
+    .attr('fill',        (d, i) => getColor(i, matrix, state.colorBy))
+    .attr('font-weight', '600')
+    .text((d, i) => stations[i].short)
+    .style('pointer-events', 'none');
+
+  // Tick marks
+  arcG.selectAll('line')
+    .data(d => {
+      const k = (d.endAngle - d.startAngle) / d.value;
+      return d3.range(0, d.value, 200).map(v => ({ angle: v*k + d.startAngle }));
+    })
+    .join('line')
+    .attr('transform', d => `rotate(${d.angle * 180/Math.PI - 90}) translate(${R},0)`)
+    .attr('x2', 5).attr('stroke', '#2a2d3e').attr('stroke-width', 1);
+}
+
+// Controls
+document.getElementById('n-slider').addEventListener('input', function() {
+  state.n = +this.value;
+  document.getElementById('n-val').textContent = state.n;
+  state.pinned = null;
+  render();
+});
+
+document.getElementById('color-btns').addEventListener('click', e => {
+  if (!e.target.dataset.val) return;
+  document.querySelectorAll('#color-btns .btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  state.colorBy = e.target.dataset.val;
+  render();
+});
+
+document.getElementById('loop-btns').addEventListener('click', e => {
+  if (!e.target.dataset.val) return;
+  document.querySelectorAll('#loop-btns .btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  state.showLoops = e.target.dataset.val === 'true';
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
